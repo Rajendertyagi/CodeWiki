@@ -1,45 +1,52 @@
 name: Build CodeWiki Portable Folder
+
 on:
   push:
     branches: [ "main" ]
   workflow_dispatch:
+
 jobs:
   build-portable:
     runs-on: windows-latest
+
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Create Portable Folder
         run: mkdir CodeWiki-Portable
+
       - name: Download Windows Embeddable Python
         run: |
-          # Downloading official Python 3.12 portable version
           Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.12.3/python-3.12.3-embed-amd64.zip" -OutFile "python-embed.zip"
           Expand-Archive -Path "python-embed.zip" -DestinationPath "CodeWiki-Portable"
+
       - name: Enable site-packages
         working-directory: ./CodeWiki-Portable
         run: |
-          # Portable Python disables 3rd-party packages by default. We have to uncomment 'import site'.
           $pthFile = Get-ChildItem -Filter "*._pth" | Select-Object -First 1
           (Get-Content $pthFile.FullName) -replace '#import site', 'import site' | Set-Content $pthFile.FullName
-      - name: Install pip and CodeWiki
+
+      - name: Install pip, build requirements, and local CodeWiki
         working-directory: ./CodeWiki-Portable
         run: |
-          # Download pip script
           Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile "get-pip.py"
-          
-          # Install pip into the portable folder
           .\python.exe get-pip.py
           
-          # Install CodeWiki (This grabs all dependencies automatically)
-          .\python.exe -m pip install codewiki
+          # Pre-install maturin which is required by some rust-based dependencies to build from source
+          .\python.exe -m pip install maturin
           
-          # Cleanup the pip script since we don't need it anymore
+          # Install the local codebase (your fork) from the repository root (..)
+          .\python.exe -m pip install ..
+          
           Remove-Item get-pip.py
+
       - name: Create Run Script
         working-directory: ./CodeWiki-Portable
         run: |
-          # Create a batch file so the user can just double-click to start CodeWiki
           $batContent = "@echo off`nSTART `"`" .\python.exe -m codewiki serve"
           Set-Content -Path "Run-CodeWiki.bat" -Value $batContent
+
       - name: Upload Portable Folder Artifact
         uses: actions/upload-artifact@v4
         with:
