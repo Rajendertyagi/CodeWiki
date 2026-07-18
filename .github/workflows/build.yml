@@ -37,7 +37,7 @@ jobs:
         env:
           CODEWIKI_SKIP_FRONTEND_BUILD: 1
         run: |
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install . pyinstaller
 
       - name: Build React frontend
@@ -64,8 +64,12 @@ jobs:
           --collect-all sqlite_vec
           backend/app/cli/main.py
 
+      - name: Compress Bundle for Distribution
+        run: |
+          Compress-Archive -Path dist/codewiki -DestinationPath dist/codewiki-windows-portable.zip
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: codewiki-windows-portable
-          path: dist/codewiki/
+          path: dist/codewiki-windows-portable.zip
