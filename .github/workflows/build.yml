@@ -1,4 +1,4 @@
-name: Build Windows portable .exe
+name: Build Windows Portable
 
 on:
   push:
@@ -9,6 +9,9 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
 
     steps:
       - uses: actions/checkout@v4
@@ -33,15 +36,12 @@ jobs:
           npm --prefix frontend ci
           npm --prefix frontend run build
 
-      - name: Build portable .exe
+      - name: Build .exe with PyInstaller
         run: |
-          pyinstaller --onefile `
-            --name codewiki `
+          pyinstaller --onedir --name codewiki `
             --add-data "backend/app/static;backend/app/static" `
             --add-data "backend/app/prompts;backend/app/prompts" `
-            --add-data "backend/skills/codewiki/SKILL.md;backend/skills/codewiki" `
-            --add-data "backend/skills/codewiki/references;backend/skills/codewiki/references" `
-            --add-data "backend/skills/codewiki/scripts;backend/skills/codewiki/scripts" `
+            --add-data "backend/skills;backend/skills" `
             --hidden-import tree_sitter `
             --hidden-import tree_sitter_c `
             --hidden-import tree_sitter_c_sharp `
@@ -57,5 +57,5 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: codewiki-windows-x64-portable
-          path: dist/codewiki.exe
+          name: codewiki-windows-portable
+          path: dist/codewiki/
