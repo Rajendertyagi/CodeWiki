@@ -1,0 +1,53 @@
+name: Build Windows portable .exe
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install backend deps
+        run: pip install -e ".[dev]" pyinstaller
+
+      - name: Install & build frontend
+        run: |
+          npm --prefix frontend ci
+          npm --prefix frontend run build
+
+      - name: Build .exe with PyInstaller
+        run: |
+          pyinstaller --onefile `
+            --name codewiki `
+            --hidden-import tree_sitter_c `
+            --hidden-import tree_sitter_c_sharp `
+            --hidden-import tree_sitter_cpp `
+            --hidden-import tree_sitter_go `
+            --hidden-import tree_sitter_java `
+            --hidden-import tree_sitter_javascript `
+            --hidden-import tree_sitter_python `
+            --hidden-import tree_sitter_rust `
+            --hidden-import tree_sitter_typescript `
+            --collect-all backend.app `
+            backend/app/cli.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: codewiki-windows-x64-portable
+          path: dist/codewiki.exe
