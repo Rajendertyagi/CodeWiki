@@ -66,6 +66,10 @@ jobs:
           --collect-all graspologic
           --hidden-import networkx
           --collect-all networkx
+          --hidden-import uvicorn
+          --collect-all uvicorn
+          --hidden-import litellm
+          --collect-all litellm
           backend/app/cli/main.py
 
       - name: Compress Bundle for Distribution
