@@ -51,33 +51,11 @@ jobs:
           --add-data "backend/app/static;backend/app/static"
           --add-data "backend/app/prompts;backend/app/prompts"
           --add-data "backend/skills;backend/skills"
-          --collect-all tree_sitter
-          --collect-all tree_sitter_c
-          --collect-all tree_sitter_c_sharp
-          --collect-all tree_sitter_cpp
-          --collect-all tree_sitter_go
-          --collect-all tree_sitter_java
-          --collect-all tree_sitter_javascript
-          --collect-all tree_sitter_python
-          --collect-all tree_sitter_rust
-          --collect-all tree_sitter_typescript
           --collect-all sqlite_vec
-          --hidden-import graspologic
-          --collect-all graspologic
-          --hidden-import networkx
-          --collect-all networkx
-          --hidden-import uvicorn
-          --collect-all uvicorn
-          --hidden-import litellm
-          --collect-all litellm
           backend/app/cli/main.py
-
-      - name: Compress Bundle for Distribution
-        run: |
-          Compress-Archive -Path dist/codewiki -DestinationPath dist/codewiki-windows-portable.zip
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: codewiki-windows-portable
-          path: dist/codewiki-windows-portable.zip
+          path: dist/codewiki/
