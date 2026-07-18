@@ -38,11 +38,45 @@ jobs:
           .\python.exe -m pip install setuptools wheel maturin
           
           Remove-Item get-pip.py
-      - name: Install local CodeWiki (No Build Isolation)
+      - name: Pre-install CodeWiki dependencies from PyPI (Wheels only)
         working-directory: ./CodeWiki-Portable
         run: |
-          # Use --no-build-isolation to use the pre-installed setuptools/wheel/maturin
-          .\python.exe -m pip install --no-build-isolation ..
+          # We install the dependencies separately so pip downloads pre-built wheels
+          # and does not attempt to trigger build isolation or compilation on them.
+          .\python.exe -m pip install `
+            aiosqlite `
+            click `
+            fastapi `
+            graspologic `
+            "httpx[socks]" `
+            litellm `
+            mermaid-parser-py `
+            networkx `
+            pathspec `
+            pydantic `
+            pydantic-settings `
+            "psycopg[binary]" `
+            python-dotenv `
+            sqlite-vec `
+            sqlalchemy `
+            tqdm `
+            tree-sitter `
+            tree-sitter-c `
+            tree-sitter-c-sharp `
+            tree-sitter-cpp `
+            tree-sitter-go `
+            tree-sitter-java `
+            tree-sitter-javascript `
+            tree-sitter-python `
+            tree-sitter-rust `
+            tree-sitter-typescript `
+            "uvicorn[standard]"
+      - name: Install local CodeWiki (No Deps, No Build Isolation)
+        working-directory: ./CodeWiki-Portable
+        run: |
+          # Since all dependencies are pre-installed as wheels, we can safely
+          # compile and install the local package without dependencies or build isolation.
+          .\python.exe -m pip install --no-build-isolation --no-deps ..
       - name: Create Run Script
         working-directory: ./CodeWiki-Portable
         run: |
