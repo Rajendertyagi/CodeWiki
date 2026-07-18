@@ -29,33 +29,35 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install Python deps
-        run: pip install -e ".[dev]" pyinstaller
+        run: |
+          pip install -e ".[dev]"
+          pip install pyinstaller
 
       - name: Build React frontend
         run: |
           npm --prefix frontend ci
           npm --prefix frontend run build
 
-      - name: Build .exe with PyInstaller
+      - name: Build .exe with PyInstaller (Single Standalone File)
         run: |
-          pyinstaller --onedir --name codewiki `
+          pyinstaller --onefile --name codewiki `
             --add-data "backend/app/static;backend/app/static" `
             --add-data "backend/app/prompts;backend/app/prompts" `
             --add-data "backend/skills;backend/skills" `
-            --hidden-import tree_sitter `
-            --hidden-import tree_sitter_c `
-            --hidden-import tree_sitter_c_sharp `
-            --hidden-import tree_sitter_cpp `
-            --hidden-import tree_sitter_go `
-            --hidden-import tree_sitter_java `
-            --hidden-import tree_sitter_javascript `
-            --hidden-import tree_sitter_python `
-            --hidden-import tree_sitter_rust `
-            --hidden-import tree_sitter_typescript `
+            --collect-all tree_sitter `
+            --collect-all tree_sitter_c `
+            --collect-all tree_sitter_c_sharp `
+            --collect-all tree_sitter_cpp `
+            --collect-all tree_sitter_go `
+            --collect-all tree_sitter_java `
+            --collect-all tree_sitter_javascript `
+            --collect-all tree_sitter_python `
+            --collect-all tree_sitter_rust `
+            --collect-all tree_sitter_typescript `
             backend/app/cli/main.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: codewiki-windows-portable
-          path: dist/codewiki/
+          path: dist/codewiki.exe
