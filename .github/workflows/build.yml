@@ -61,6 +61,7 @@ jobs:
           --collect-all tree_sitter_python
           --collect-all tree_sitter_rust
           --collect-all tree_sitter_typescript
+          --collect-all sqlite_vec
           backend/app/cli/main.py
 
       - name: Upload artifact
