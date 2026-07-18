@@ -18,17 +18,17 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Set up Python 3.12 (for building wheel)
+      - name: Set up Python 3.12 (for building wheels)
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Build CodeWiki Wheel on Host
+      - name: Build all Wheels on Host
         run: |
           python -m pip install --upgrade pip
-          python -m pip install build
-          # This builds the frontend and packages CodeWiki into a .whl file in the 'dist' folder
-          python -m build --wheel --outdir dist
+          # This compiles CodeWiki, builds the frontend, and downloads pre-built wheels 
+          # for all dependencies into the 'dist-wheels' directory.
+          pip wheel . --wheel-dir dist-wheels
 
       - name: Create Portable Folder
         run: mkdir CodeWiki-Portable
@@ -44,18 +44,19 @@ jobs:
           $pthFile = Get-ChildItem -Filter "*._pth" | Select-Object -First 1
           (Get-Content $pthFile.FullName) -replace '#import site', 'import site' | Set-Content $pthFile.FullName
 
-      - name: Install pip and pre-built CodeWiki
+      - name: Install pip in Portable Folder
         working-directory: ./CodeWiki-Portable
         run: |
-          # 1. Install pip
           Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile "get-pip.py"
           .\python.exe get-pip.py
           Remove-Item get-pip.py
-          
-          # 2. Find the built .whl file and install it.
-          # Pip will dynamically download all required dependencies from PyPI.
-          $wheelFile = Get-ChildItem -Path "..\dist\*.whl" | Select-Object -First 1
-          .\python.exe -m pip install $wheelFile.FullName
+
+      - name: Install CodeWiki from Local Wheels
+        working-directory: ./CodeWiki-Portable
+        run: |
+          # Install using ONLY the pre-built wheels from the host. 
+          # --no-index ensures it doesn't look at PyPI and never tries to compile anything.
+          .\python.exe -m pip install --no-index --find-links=..\dist-wheels codewiki
 
       - name: Create Run Script
         working-directory: ./CodeWiki-Portable
