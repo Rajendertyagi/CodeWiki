@@ -1,71 +1,55 @@
-name: Build CodeWiki Portable Folder
-
+name: Build Portable Windows Release
 on:
-  push:
-    branches: [ "main" ]
   workflow_dispatch:
-
+  release:
+    types: [created]
 jobs:
   build-portable:
     runs-on: windows-latest
-
+    
     steps:
-      - name: Checkout repository
+      - name: Checkout Code
         uses: actions/checkout@v4
-
-      - name: Set up Node.js (for building frontend)
+      - name: Setup Node.js (for frontend build)
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-
-      - name: Set up Python 3.12 (for building wheels)
+      - name: Setup Host Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
-      - name: Build all Wheels on Host
+      - name: Build CodeWiki Wheel on Host
         run: |
           python -m pip install --upgrade pip
-          # This compiles CodeWiki, builds the frontend, and downloads pre-built wheels 
-          # for all dependencies into the 'dist-wheels' directory.
-          pip wheel . --wheel-dir dist-wheels
-
-      - name: Create Portable Folder
-        run: mkdir CodeWiki-Portable
-
+          pip install build
+          python -m build --wheel
       - name: Download Windows Embeddable Python
         run: |
           Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.12.3/python-3.12.3-embed-amd64.zip" -OutFile "python-embed.zip"
           Expand-Archive -Path "python-embed.zip" -DestinationPath "CodeWiki-Portable"
-
-      - name: Enable site-packages
-        working-directory: ./CodeWiki-Portable
+      - name: Configure Embeddable Python
+        working-directory: CodeWiki-Portable
         run: |
-          $pthFile = Get-ChildItem -Filter "*._pth" | Select-Object -First 1
-          (Get-Content $pthFile.FullName) -replace '#import site', 'import site' | Set-Content $pthFile.FullName
-
-      - name: Install pip in Portable Folder
-        working-directory: ./CodeWiki-Portable
+          (Get-Content python312._pth) -replace '#import site', 'import site' | Set-Content python312._pth
+      - name: Install pip in Embeddable Python
+        working-directory: CodeWiki-Portable
         run: |
           Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile "get-pip.py"
           .\python.exe get-pip.py
           Remove-Item get-pip.py
-
-      - name: Install CodeWiki from Local Wheels
-        working-directory: ./CodeWiki-Portable
+      - name: Install CodeWiki from Wheel
         run: |
-          # Install using ONLY the pre-built wheels from the host. 
-          # --no-index ensures it doesn't look at PyPI and never tries to compile anything.
-          .\python.exe -m pip install --no-index --find-links=..\dist-wheels codewiki
-
+          CodeWiki-Portable\python.exe -m pip install (Get-ChildItem dist\*.whl).FullName
       - name: Create Run Script
-        working-directory: ./CodeWiki-Portable
         run: |
-          $batContent = "@echo off`nSTART `"`" .\python.exe -m codewiki serve"
-          Set-Content -Path "Run-CodeWiki.bat" -Value $batContent
-
-      - name: Upload Portable Folder Artifact
+          echo "@echo off" > CodeWiki-Portable/Run-CodeWiki.bat
+          echo ".\python.exe -m backend.app.cli.main serve" >> CodeWiki-Portable/Run-CodeWiki.bat
+          echo "pause" >> CodeWiki-Portable/Run-CodeWiki.bat
+      - name: Zip Portable Environment
+        run: |
+          Compress-Archive -Path "CodeWiki-Portable\*" -DestinationPath "CodeWiki-Portable-Windows.zip"
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: CodeWiki-Portable-Windows
-          path: CodeWiki-Portable/
+          path: CodeWiki-Portable-Windows.zip
