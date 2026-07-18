@@ -62,8 +62,10 @@ jobs:
           --collect-all tree_sitter_rust
           --collect-all tree_sitter_typescript
           --collect-all sqlite_vec
+          --hidden-import graspologic
           --collect-all graspologic
-          --collect-all graspologic_native
+          --hidden-import networkx
+          --collect-all networkx
           backend/app/cli/main.py
 
       - name: Compress Bundle for Distribution
