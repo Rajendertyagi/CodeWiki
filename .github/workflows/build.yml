@@ -1,87 +1,68 @@
 name: Build CodeWiki Portable Folder
+
 on:
   push:
     branches: [ "main" ]
   workflow_dispatch:
+
 jobs:
   build-portable:
     runs-on: windows-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Set up Node.js
+
+      - name: Set up Node.js (for building frontend)
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Set up Python 3.12
+
+      - name: Set up Python 3.12 (for building wheel)
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
+      - name: Build CodeWiki Wheel on Host
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build
+          # This builds the frontend and packages CodeWiki into a .whl file in the 'dist' folder
+          python -m build --wheel --outdir dist
+
       - name: Create Portable Folder
         run: mkdir CodeWiki-Portable
+
       - name: Download Windows Embeddable Python
         run: |
           Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.12.3/python-3.12.3-embed-amd64.zip" -OutFile "python-embed.zip"
           Expand-Archive -Path "python-embed.zip" -DestinationPath "CodeWiki-Portable"
+
       - name: Enable site-packages
         working-directory: ./CodeWiki-Portable
         run: |
           $pthFile = Get-ChildItem -Filter "*._pth" | Select-Object -First 1
           (Get-Content $pthFile.FullName) -replace '#import site', 'import site' | Set-Content $pthFile.FullName
-      - name: Install pip and build tools
+
+      - name: Install pip and pre-built CodeWiki
         working-directory: ./CodeWiki-Portable
         run: |
+          # 1. Install pip
           Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile "get-pip.py"
           .\python.exe get-pip.py
-          
-          # Pre-install the build tools into the portable Python environment
-          .\python.exe -m pip install setuptools wheel maturin
-          
           Remove-Item get-pip.py
-      - name: Pre-install CodeWiki dependencies from PyPI (Wheels only)
-        working-directory: ./CodeWiki-Portable
-        run: |
-          # We install the dependencies separately so pip downloads pre-built wheels
-          # and does not attempt to trigger build isolation or compilation on them.
-          .\python.exe -m pip install `
-            aiosqlite `
-            click `
-            fastapi `
-            graspologic `
-            "httpx[socks]" `
-            litellm `
-            mermaid-parser-py `
-            networkx `
-            pathspec `
-            pydantic `
-            pydantic-settings `
-            "psycopg[binary]" `
-            python-dotenv `
-            sqlite-vec `
-            sqlalchemy `
-            tqdm `
-            tree-sitter `
-            tree-sitter-c `
-            tree-sitter-c-sharp `
-            tree-sitter-cpp `
-            tree-sitter-go `
-            tree-sitter-java `
-            tree-sitter-javascript `
-            tree-sitter-python `
-            tree-sitter-rust `
-            tree-sitter-typescript `
-            "uvicorn[standard]"
-      - name: Install local CodeWiki (No Deps, No Build Isolation)
-        working-directory: ./CodeWiki-Portable
-        run: |
-          # Since all dependencies are pre-installed as wheels, we can safely
-          # compile and install the local package without dependencies or build isolation.
-          .\python.exe -m pip install --no-build-isolation --no-deps ..
+          
+          # 2. Find the built .whl file and install it.
+          # Pip will dynamically download all required dependencies from PyPI.
+          $wheelFile = Get-ChildItem -Path "..\dist\*.whl" | Select-Object -First 1
+          .\python.exe -m pip install $wheelFile.FullName
+
       - name: Create Run Script
         working-directory: ./CodeWiki-Portable
         run: |
           $batContent = "@echo off`nSTART `"`" .\python.exe -m codewiki serve"
           Set-Content -Path "Run-CodeWiki.bat" -Value $batContent
+
       - name: Upload Portable Folder Artifact
         uses: actions/upload-artifact@v4
         with:
