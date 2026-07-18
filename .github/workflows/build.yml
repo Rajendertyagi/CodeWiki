@@ -1,44 +1,47 @@
-name: Build CodeWiki Windows EXE
+name: Build CodeWiki Portable Folder
 on:
   push:
     branches: [ "main" ]
   workflow_dispatch:
 jobs:
-  build-windows:
+  build-portable:
     runs-on: windows-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          cache: 'pip'
-      - name: Install dependencies and PyInstaller
+      - name: Create Portable Folder
+        run: mkdir CodeWiki-Portable
+      - name: Download Windows Embeddable Python
         run: |
-          python -m pip install --upgrade pip
-          pip install .
-          pip install pyinstaller
-      - name: Create Entry Point Script
+          # Downloading official Python 3.12 portable version
+          Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.12.3/python-3.12.3-embed-amd64.zip" -OutFile "python-embed.zip"
+          Expand-Archive -Path "python-embed.zip" -DestinationPath "CodeWiki-Portable"
+      - name: Enable site-packages
+        working-directory: ./CodeWiki-Portable
         run: |
-          echo "from backend.app.cli import main" > run_codewiki.py
-          echo "if __name__ == '__main__':" >> run_codewiki.py
-          echo "    main()" >> run_codewiki.py
-      - name: Build EXE with PyInstaller
+          # Portable Python disables 3rd-party packages by default. We have to uncomment 'import site'.
+          $pthFile = Get-ChildItem -Filter "*._pth" | Select-Object -First 1
+          (Get-Content $pthFile.FullName) -replace '#import site', 'import site' | Set-Content $pthFile.FullName
+      - name: Install pip and CodeWiki
+        working-directory: ./CodeWiki-Portable
         run: |
-          pyinstaller --onefile --name CodeWiki `
-            --collect-all backend `
-            --collect-all tree_sitter `
-            --collect-all litellm `
-            --hidden-import uvicorn `
-            --hidden-import fastapi `
-            --hidden-import aiosqlite `
-            --hidden-import psycopg `
-            --hidden-import networkx `
-            --hidden-import sqlalchemy `
-            run_codewiki.py
-      - name: Upload EXE Artifact
+          # Download pip script
+          Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile "get-pip.py"
+          
+          # Install pip into the portable folder
+          .\python.exe get-pip.py
+          
+          # Install CodeWiki (This grabs all dependencies automatically)
+          .\python.exe -m pip install codewiki
+          
+          # Cleanup the pip script since we don't need it anymore
+          Remove-Item get-pip.py
+      - name: Create Run Script
+        working-directory: ./CodeWiki-Portable
+        run: |
+          # Create a batch file so the user can just double-click to start CodeWiki
+          $batContent = "@echo off`nSTART `"`" .\python.exe -m codewiki serve"
+          Set-Content -Path "Run-CodeWiki.bat" -Value $batContent
+      - name: Upload Portable Folder Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: CodeWiki-Windows-EXE
-          path: dist/CodeWiki.exe
+          name: CodeWiki-Portable-Windows
+          path: CodeWiki-Portable/
