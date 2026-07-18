@@ -45,9 +45,9 @@ jobs:
           npm --prefix frontend ci
           npm --prefix frontend run build
 
-      - name: Build .exe with PyInstaller
+      - name: Build with PyInstaller
         run: >
-          pyinstaller --noconfirm --onefile --name codewiki
+          pyinstaller --noconfirm --onedir --name codewiki
           --add-data "backend/app/static;backend/app/static"
           --add-data "backend/app/prompts;backend/app/prompts"
           --add-data "backend/skills;backend/skills"
@@ -68,4 +68,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: codewiki-windows-portable
-          path: dist/codewiki.exe
+          path: dist/codewiki/
